@@ -6,6 +6,8 @@ use \Orm\Schema\Schema;
 
 class SchemaBuilder {
 
+	use PhpBuilderTrait;
+
 	protected $recordBuilder;
 	protected $mapperBuilder;
 	protected $namespace;
@@ -16,16 +18,12 @@ class SchemaBuilder {
 		$this->namespace = $namespace;
 	}
 
-	protected function toUpperCamel($string) {
-		return implode("", array_map('ucwords', explode("_", $string)));
-	}
-
 	public function build(Schema $schema) {
 
 		$out = [];
 
 		foreach ($schema->getTables() as $table) {
-			$base = $this->toUpperCamel($table->getName());
+			$base = $this->camelUpper($table->getName());
 
 			$recordClassName = $base.'Record';
 			$recordPath = 'Objects/'.$recordClassName.'.php';
@@ -43,7 +41,7 @@ class SchemaBuilder {
 
 			$php = $this->mapperBuilder->build(
 				$this->namespace.'\\Mappers',
-				$recordClassName,
+				$this->namespace.'\\Objects\\'.$recordClassName,
 				$mapperClassName,
 				$table);
 

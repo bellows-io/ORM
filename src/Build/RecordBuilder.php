@@ -7,9 +7,7 @@ use \Orm\Schema\Table;
 
 class RecordBuilder {
 
-	protected function toUpperCamel($string) {
-		return implode("", array_map('ucwords', explode("_", $string)));
-	}
+	use PhpBuilderTrait;
 
 	public function build($namespace, $className, Table $table) {
 		$php = "";
@@ -22,18 +20,18 @@ class RecordBuilder {
 
 		foreach ($table->getAllColumns() as $name => $column) {
 
-			$ucProper = $this->toUpperCamel($name);
-			$property = lcfirst($ucProper);
+			$ucProper = $this->camelUpper($name);
+			$property = $this->camelLower($name);
 
 			$properties[] = "protected \$$property;";
 			$validatorProperties[] = "private static \$${property}Type;";
 
 			$arguments[]  = "\$$property";
-			$export = var_export($column->getType(), true);
-			$export = str_replace("   ", "\t\t\t\t", $export);
-			$export = str_replace("\n)", "\n\t\t\t)", $export);
+			$export = "self::\${$property}Type = \\".var_export($column->getType(), true);
 
-			$validatorInits[] = "self::\${$property}Type = \\".$export.";";
+			$export = self::spaceToTab($export, 3);
+
+			$validatorInits[] = $export.";";
 			$assignments[] = sprintf("\$this->set%s(\$%s);", $ucProper, $property);
 			$gettersetters[] = sprintf(self::$getterSetterTemplate, $ucProper, $property);
 
@@ -47,7 +45,7 @@ class RecordBuilder {
 			implode("\n\t\t", $assignments),
 			implode("\n\n", $gettersetters),
 			implode("\n\t", $validatorProperties),
-			implode("\n\t\t\t", $validatorInits)
+			self::indentTabs(implode("\n", $validatorInits), 3)
 		);
 
 		return $php;
@@ -56,8 +54,10 @@ class RecordBuilder {
 	protected static $getterSetterTemplate = <<<GS
 	public function set%1\$s(\$value) {
 		self::\$%2\$sType->validate(\$value);
+		\$value = self::\$%2\$sType->parse(\$value);
+
 		if (\$value != \$this->%2\$s) {
-			\$this->modified = true;
+			\$this->markDirty();
 			\$this->%2\$s = \$value;
 		}
 	}
@@ -72,7 +72,7 @@ GS;
 
 namespace %s;
 
-class %s {
+class %s extends \Orm\Data\AbstractRecord {
 
 	%s
 
@@ -89,7 +89,7 @@ class %s {
 
 	protected static function initValidators() {
 		if (! self::\$validatorsInit) {
-			%s
+%s
 			self::\$validatorsInit = true;
 		}
 	}

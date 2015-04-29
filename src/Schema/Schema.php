@@ -20,4 +20,7 @@ class Schema {
 		return $this->tables[$tableName];
 	}
 
+	public function getTables() {
+		return $this->tables;
+	}
 }

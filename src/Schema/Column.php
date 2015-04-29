@@ -6,12 +6,12 @@ class Column {
 
 	protected $name;
 	protected $type;
-	protected $isNullable;
+	protected $isAutoIncrement;
 
-	public function __construct($name, Type $type, $isNullable = false) {
+	public function __construct($name, Types\AbstractDbType $type, $isAutoIncrement = false) {
 		$this->name = $name;
 		$this->type = $type;
-		$this->isNullable = $isNullable;
+		$this->isAutoIncrement = $isAutoIncrement;
 	}
 
 	public function getName() {
@@ -22,8 +22,8 @@ class Column {
 		return $this->type;
 	}
 
-	public function getIsNullable() {
-		return $this->isNullable;
+	public function isAutoIncrement() {
+		return $this->isAutoIncrement;
 	}
 
 }

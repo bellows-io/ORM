@@ -4,14 +4,18 @@ namespace Orm\Schema;
 
 class PrimaryKey {
 
-	protected $columns;
+	protected $columnNames;
 
-	public function(array $columns) {
-		$this->columns = $columns;
+	public function __construct(array $columnNames) {
+		$this->columnNames = $columnNames;
 	}
 
-	public function getColumns() {
-		return $this->columns;
+	public function getColumnNames() {
+		return $this->columnNames;
+	}
+
+	public function hasColumn($columnName) {
+		return in_array($columnName, $this->columnNames);
 	}
 
 }

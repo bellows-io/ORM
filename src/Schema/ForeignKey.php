@@ -1,6 +1,6 @@
 <?php
 
-namespace \Orm\Schema;
+namespace Orm\Schema;
 
 class ForeignKey {
 

@@ -9,7 +9,7 @@ class Table {
 	protected $primaryKey;
 	protected $indices;
 
-	public function __construct($name, array $columns, array $primaryKey, array $indices = array()) {
+	public function __construct($name, array $columns, $primaryKey, array $indices = array()) {
 		$this->name        = $name;
 		$this->columns     = [];
 		$this->primaryKey = $primaryKey;
@@ -44,4 +44,12 @@ class Table {
 		return $this->primaryKey;
 	}
 
+	public function getAutoIncrementColumn() {
+		foreach ($this->columns as $name => $column) {
+			if ($column->isAutoIncrement()) {
+				return $column;
+			}
+		}
+		return null;
+	}
 }

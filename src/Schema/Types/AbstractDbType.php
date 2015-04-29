@@ -19,4 +19,8 @@ abstract class AbstractDbType {
 			throw new \Exception("Value may not be null");
 		}
 	}
+
+	public function parse($value) {
+		return $value;
+	}
 }

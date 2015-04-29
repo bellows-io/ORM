@@ -23,4 +23,8 @@ class DbInt extends \Orm\Schema\Types\AbstractDbType {
 		return new self($data['isNullable'], $data['length']);
 	}
 
+	public function parse($value) {
+		return (int)$value;
+	}
+
 }

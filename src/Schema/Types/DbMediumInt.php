@@ -19,5 +19,8 @@ class DbMediumInt extends \Orm\Schema\Types\AbstractDbType {
 		parent::validate($value);
 	}
 
+	public function parse($value) {
+		return (int)$value;
+	}
 
 }

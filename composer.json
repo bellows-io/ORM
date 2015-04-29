@@ -1,0 +1,9 @@
+{
+	"name"        : "bellows/orm",
+	"description" : "My ORM.",
+	"license"     : "MIT",
+	"repositories": [],
+	"autoload": {
+		"psr-4": {"Orm\\":"src/"}
+	}
+}

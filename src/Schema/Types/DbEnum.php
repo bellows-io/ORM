@@ -6,7 +6,8 @@ class DbEnum extends \Orm\Schema\Types\AbstractDbType {
 
 	protected $values;
 
-	public function __construct(array $values) {
+	public function __construct($nullable, array $values) {
+		parent::__construct($nullable);
 		$this->values = $values;
 	}
 

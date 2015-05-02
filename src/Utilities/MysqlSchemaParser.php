@@ -11,9 +11,11 @@ class MysqlSchemaParser {
 		}
 		$name = $matches['name'];
 		$inner = $matches['inner'];
-		$defs = explode(',', $inner);
+		$defs = explode(",\n", $inner);
 		$columns = [];
 		$pkeys = [];
+		$fkeys = [];
+
 
 		try {
 			foreach ($defs as $def) {
@@ -24,15 +26,28 @@ class MysqlSchemaParser {
 					if (preg_match('/PRIMARY KEY \(`(.+)`\)/', $def, $matches)) {
 						$pkeys = explode(',', str_replace('`', '', $matches[1]));
 					}
+				} else if (preg_match('/CONSTRAINT\s*`(?P<name>.*?)`\s*FOREIGN KEY.*\((?P<local>.*)\)\s*REFERENCES\s*`(?P<table>.*?)`\s*\((?P<foreign>.*)\)/i', $def, $matches)) {
+
+					$localColumns = array_map(function($l) {
+						return trim($l, '` ');
+					}, explode(",", $matches['local']));
+
+					$foreignColumns = array_map(function($l) {
+						return trim($l, '` ');
+					}, explode(",", $matches['foreign']));
+
+					$fkeys[]= new \Orm\Schema\ForeignKey($matches['name'], $localColumns, $matches['table'], $foreignColumns);
 				}
 			}
 		} catch (\Exception $ex) {
 			throw new \Exception("in table sql: ".$sql.":\n\t".$ex->getMessage());
 		}
 
-		return new \Orm\Schema\Table($name, $columns, new \Orm\Schema\PrimaryKey($pkeys), [], []);
+		return new \Orm\Schema\Table($name, $columns, new \Orm\Schema\PrimaryKey($pkeys), [], $fkeys);
 
 	}
+
+
 
 	public function parseColumnDef($sql) {
 		if (! preg_match('/\s*`(?P<name>.+?)`\s+(?P<type>(?P<base>[a-z]+)(\((?P<length>.+)\))?)\s*(?P<un>unsigned)?\s*(?P<nu>NULL|NOT NULL)?\s*(DEFAULT\s+(?P<def>.+))?\s*(?P<ai>AUTO_INCREMENT)?(.*?)$/', $sql, $matches)) {

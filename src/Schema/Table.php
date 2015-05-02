@@ -8,12 +8,14 @@ class Table {
 	protected $columns;
 	protected $primaryKey;
 	protected $indices;
+	protected $foreignKeys;
 
-	public function __construct($name, array $columns, $primaryKey, array $indices = array()) {
+	public function __construct($name, array $columns, $primaryKey, array $indices = array(), array $foreignKeys = array()) {
 		$this->name        = $name;
 		$this->columns     = [];
-		$this->primaryKey = $primaryKey;
+		$this->primaryKey  = $primaryKey;
 		$this->indices     = $indices;
+		$this->foreignKeys = $foreignKeys;
 
 		foreach ($columns as $column) {
 			$this->columns[$column->getName()] = $column;
@@ -43,6 +45,9 @@ class Table {
 	public function getPrimaryKey() {
 		return $this->primaryKey;
 	}
+
+	public function getForeignKeys() {
+		return $this->foreignKeys;	}
 
 	public function getAutoIncrementColumn() {
 		foreach ($this->columns as $name => $column) {

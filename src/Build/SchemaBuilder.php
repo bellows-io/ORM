@@ -15,7 +15,7 @@ class SchemaBuilder {
 	public function __construct(RecordBuilder $recordBuilder, MapperBuilder $mapperBuilder, $namespace) {
 		$this->recordBuilder = $recordBuilder;
 		$this->mapperBuilder = $mapperBuilder;
-		$this->namespace = $namespace;
+		$this->namespace     = $namespace;
 	}
 
 	public function build(Schema $schema) {
@@ -25,17 +25,18 @@ class SchemaBuilder {
 		foreach ($schema->getTables() as $table) {
 			$base = $this->camelUpper($table->getName());
 
-			$recordClassName = $base.'Record';
+			$recordClassName = $base;
 			$recordPath = 'Objects/'.$recordClassName.'.php';
 
 			$php = $this->recordBuilder->build(
 				$this->namespace.'\\Objects',
 				$recordClassName,
-				$table);
+				$table,
+				$schema);
 
 			$out[$recordPath] = $php;
 
-
+/*
 			$mapperClassName = $base.'Mapper';
 			$mapperPath = 'Mappers/'.$mapperClassName.'.php';
 
@@ -45,10 +46,22 @@ class SchemaBuilder {
 				$mapperClassName,
 				$table);
 
-			$out[$mapperPath] = $php;
+			$out[$mapperPath] = $php;*/
 		}
+
+		$out['Mapper.php'] = $this->mapperBuilder->build(
+			$this->namespace,
+			$this->namespace.'\\Objects',
+			$schema);
 
 		return $out;
 	}
+
+	/*protected function buildMapper(Schema $schema) {
+		foreach ($schema->getTables() as $table) {
+
+
+		}
+	}*/
 
 }

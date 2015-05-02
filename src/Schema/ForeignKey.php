@@ -4,26 +4,32 @@ namespace Orm\Schema;
 
 class ForeignKey {
 
-	protected $localColumn;
+	protected $localColumns;
 	protected $foreignTable;
-	protected $foreignColumn;
+	protected $name;
+	protected $foreignColumns;
 
-	public function __construct($localColumn, $foreignTable, $foreignColumn) {
-		$this->localColumn   = $localColumn;
-		$this->foreignTable  = $foreignTable;
-		$this->foreignColumn = $foreignColumn;
+	public function __construct($name, array $localColumns, $foreignTable, array $foreignColumns) {
+		$this->name           = $name;
+		$this->localColumns   = $localColumns;
+		$this->foreignTable   = $foreignTable;
+		$this->foreignColumns = $foreignColumns;
 	}
 
-	public function getLocalColumn() {
-		return $this->localColumn;
+	public function getName() {
+		return $this->name;
 	}
 
-	public function getForeginTable() {
+	public function getLocalColumns() {
+		return $this->localColumns;
+	}
+
+	public function getForeignTable() {
 		return $this->foreignTable;
 	}
 
-	public function getForeignColumn() {
-		return $this->foreignColumn;
+	public function getForeignColumns() {
+		return $this->foreignColumns;
 	}
 
 }

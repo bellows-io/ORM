@@ -9,236 +9,55 @@ class MapperBuilder {
 
 	use PhpBuilderTrait;
 
+	protected static $buildSwitchTemplate = <<<SWITCH
+			case Objects\\%s::TABLE:
+				return new Objects\\%1\$s(\$record, \$this);
+SWITCH;
+	protected static $readSwitchTemplate = <<<SWITCH
+			case Objects\\%s::TABLE:
+				return \$this->from(Objects\\%1\$s::TABLE)->where([Objects\\%1\$s::%2s => \$id])->readOne();
+SWITCH;
+
 	protected static $template = <<<PHP
 <?php
 
 namespace %s;
 
-use %s;
+class Mapper extends \Orm\Data\AbstractMapper {
 
-class %s extends \Orm\Data\AbstractMapper {
+	public function buildRecordObject(\$table, array \$record) {
 
+		switch (\$table) {
 %s
+			default:
+				throw new \\Exception("Unrecognized table `\$table`");
+		}
+	}
 
+	public function readFromAutoIncrementId(\$table, \$id) {
+		switch (\$table) {
+%s
+			default:
+				throw new \\Exception("No AutoIncrement column on table `\$table`");
+		}
+	}
 }
 
 
 PHP;
 
-	public function build($namespace, $recordClassNamespace, $className, Table $table) {
+	public function build($namespace, $recordObjectNamespace, Schema $schema) {
 
-		$nsPartials = explode('\\', $recordClassNamespace);
-		$recordClassName = $nsPartials[count($nsPartials)-1];
-
-		$str = '';
-		$str .= $this->buildCreateMethod($recordClassName, $table);
-		$str .= $this->buildReadMethod($recordClassName, $table);
-		$str .= $this->buildUpdateMethod($recordClassName, $table);
-		$str .= $this->buildDeleteMethod($recordClassName, $table);
-
-		return sprintf(self::$template,
-			$namespace,
-			implode('\\', $nsPartials),
-			$className,
-			$this->indentTabs($str, 1)
-		);
-	}
-
-	protected function buildDeleteMethod($recordClassName, Table $table) {
-
-		$arguments  = [];
-		$matchArgs  = [];
-		$objectName = lcfirst($recordClassName);
-
-		$pkey = $table->getPrimaryKey();
-
-		foreach ($table->getAllColumns() as $name => $column) {
-			$base = $this->camelUpper($column->getName());
-			$row = sprintf('\'%s\' => $%s->get%s()', $column->getName(), $objectName, $base);
-			if ($pkey->hasColumn($column->getName())) {
-				$matchArgs[] = $row;
+		$cases = [];
+		$readSwitch = [];
+		foreach ($schema->getTables() as $table) {
+			$cases[] = sprintf(self::$buildSwitchTemplate, $this->camelUpper($table->getName()));
+			if ($aiColumn = $table->getAutoIncrementColumn()) {
+				$readSwitch[] = sprintf(self::$readSwitchTemplate, $this->camelUpper($table->getName()), $this->camelLower($aiColumn->getName()));
 			}
 		}
 
-		$php =<<<PHP
-
-public function delete(%s \$%s) {
-	return \$this->deleteRow("%s", [
-		%s
-	]);
-}
-
-PHP;
-
-		$php = sprintf($php,
-			$recordClassName,
-			lcfirst($recordClassName),
-			$table->getName(),
-			implode(",\n\t\t", $matchArgs)
-		);
-
-		return $php;
-	}
-
-	protected function buildUpdateMethod($recordClassName, Table $table) {
-
-		$arguments  = [];
-		$updateArgs = [];
-		$matchArgs  = [];
-		$objectName = lcfirst($recordClassName);
-
-		$pkey = $table->getPrimaryKey();
-
-		foreach ($table->getAllColumns() as $name => $column) {
-			$base = $this->camelUpper($column->getName());
-			$row = sprintf('\'%s\' => $%s->get%s()', $column->getName(), $objectName, $base);
-			if ($pkey->hasColumn($column->getName())) {
-				$matchArgs[] = $row;
-			} else {
-				$updateArgs[] = $row;
-			}
-		}
-
-		$php =<<<PHP
-
-public function update(%s \$%s) {
-	return \$this->updateRow("%s", [
-		%s
-	], [
-		%s
-	]);
-}
-
-PHP;
-
-		$php = sprintf($php,
-			$recordClassName,
-			lcfirst($recordClassName),
-			$table->getName(),
-			implode(",\n\t\t", $updateArgs),
-			implode(",\n\t\t", $matchArgs)
-		);
-
-		return $php;
-	}
-
-	protected function buildReadMethod($recordClassName, Table $table) {
-
-		$arguments  = [];
-		$updateArgs = [];
-		$matchArgs  = [];
-		$objectName = lcfirst($recordClassName);
-		$arguments = [];
-		$constructorArgs = [];
-
-		$pkey = $table->getPrimaryKey();
-
-		foreach ($table->getAllColumns() as $name => $column) {
-
-			$arg  = $this->camelLower($column->getName());
-			if ($pkey->hasColumn($column->getName())) {
-				$arguments[]= '$'.$arg;
-				$matchArgs[] = sprintf('\'%s\' => $%s', $column->getName(), $arg);
-			}
-			$constructorArgs[] = sprintf('$row[\'%s\']', $column->getName());
-		}
-
-		$php =<<<PHP
-
-public function read(%s) {
-	\$row = \$this->readRow("%s", [
-		%s
-	]);
-	return \$this->makeFromRow(\$row);
-}
-
-public function makeFromRow(array \$row) {
-	return new %s(%s);
-}
-
-PHP;
-
-		$php = sprintf($php,
-			implode(", ", $arguments),
-			$table->getName(),
-			implode(",\n\t\t", $matchArgs),
-			$recordClassName,
-			implode(', ', $constructorArgs)
-		);
-
-		return $php;
-	}
-
-	protected function buildCreateMethod($recordClassName, Table $table) {
-
-		$arguments  = [];
-		$insertArgs = [];
-		$aiAssignStatement = '';
-		$aiArg = '';
-
-		$aiColumn = $table->getAutoIncrementColumn();
-		if ($aiColumn) {
-			$aiParam  = lcfirst($this->camelUpper($aiColumn->getName()));
-			$aiAssignStatement = '$'.$aiParam.' = ';
-			$aiArg = '$'.$aiParam.', ';
-		}
-
-		foreach ($table->getAllColumns() as $name => $column) {
-			if ($column != $aiColumn) {
-				$base = lcfirst($this->camelUpper($column->getName()));
-				$arguments[] = '$'.$base;
-				$insertArgs[] = sprintf('\'%s\' => $%s', $column->getName(), $base);
-			}
-		}
-
-		$php =<<<PHP
-
-public function create(%s) {
-	%s\$this->insertRow("%s", [
-		%s
-	]);
-
-	return new %s(%s%1\$s);
-}
-
-PHP;
-
-		$php = sprintf($php,
-			implode(', ', $arguments),
-			$aiAssignStatement,
-			$table->getName(),
-			implode(",\n\t\t", $insertArgs),
-			$recordClassName,
-			$aiArg
-		);
-
-		return $php;
+		return sprintf(self::$template, $namespace, implode("\n", $cases), implode("\n", $readSwitch));
 
 	}
 }
-
-/*
-
-namespace OranjIo\Mappers;
-
-class UserMapper extends \Orm\Data\AbstractMspper {
-
-	public function create($userUsername, $userName, $userEmail, $userCookie, $userPassword, $userRole) {
-
-		$userId = $this->insert("user", [
-			"user_username" => $userUsername,
-			"user_name" => $userName,
-			"user_email" => $userEmail,
-			"user_cookie" => $userCookie,
-			"user_password" => $userPassword,
-			"user_role" => $userRole
-		]);
-
-		return new OranjIo\Objects\UserRecord($userId, $userUsername, $userName, $userEmail, $userCookie, $userPassword, $userRole);
-	}
-
-}
-
-
-
- */

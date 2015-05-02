@@ -12,6 +12,9 @@ abstract class AbstractMapper {
 		$this->connection = $connection;
 	}
 
+	protected abstract function buildRecordObject($tableName, array $record);
+	protected abstract function readFromAutoIncrementId($tableName, $id);
+
 	private function prepare($sql, array $data = array()) {
 
 		$statement = $this->connection->prepare($sql);
@@ -21,31 +24,56 @@ abstract class AbstractMapper {
 			foreach($data as $key => $value) {
 				$type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
 				$statement->bindParam($i, $value, $type);
+				$i++;
 			}
 		}
 		return $statement;
 	}
 
-	protected function readRow($table, array $conds) {
-		$sql = "SELECT * FROM ${table} WHERE ";
-		$wheres = [];
-		$params = [];
-		foreach ($conds as $key => $value) {
-			$wheres []= sprintf('`%s` = ?', $key);
-			$params[] = $value;
+	public function create($tableName, array $input) {
+		$sql = "INSERT INTO `$tableName` (`%s`) VALUES (%s);";
+		$keys = [];
+		$values = [];
+
+
+		foreach ($input as $key => $value) {
+			$keys[] = '`'.$key.'`';
 		}
-		$statement = $this->prepare($sql . implode(" AND ", $wheres).' LIMIT 1', $params);
-		$statement->setFetchMode(\PDO::FETCH_ASSOC);
+
+		$sql = sprintf($sql, implode('`, `', array_keys($input)), implode(', ', array_fill(0, count($input), '?')));
+
+		$statement = $this->prepare($sql, array_values($input));
+
+		$statement->setFetchMode(PDO::FETCH_BOTH);
 		$statement->execute();
 
-		foreach ($statement as $row) {
-			return $row;
+		if ($insertId = $this->connection->lastInsertId()) {
+
+			return $this->readFromAutoIncrementId($tableName, $insertId);
 		}
 		return null;
 	}
 
-	protected function updateRow($table, array $fields, array $conds) {
+	public function from($tableName) {
+		$builder = new QueryBuilder($tableName, $this, function($sql, $params, $return) use ($tableName) {
+			$statement = $this->prepare($sql, $params);
+			$statement->setFetchMode(PDO::FETCH_BOTH);
+			$statement->execute();
 
+			if ($return == QueryBuilder::RETURN_NONE) {
+				return;
+			}
+			$out = [];
+			foreach ($statement as $row) {
+				$record = $this->buildRecordObject($tableName, $row);
+				if ($return == QueryBuilder::RETURN_SINGLE) {
+					return $record;
+				}
+				$out[] = $record;
+			}
+			return $out;
+		});
+		return $builder;
 	}
 
 }

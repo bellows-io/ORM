@@ -19,6 +19,45 @@ class RecordBuilder {
 		$validatorInits = [];
 		$pk = $table->getPrimaryKey();
 
+		$linkingTables = $schema->getLinkingTables($tableName);
+		$linkedGetters = [];
+
+		foreach ($linkingTables as $name => $keys) {
+			$in = $keys['inKey'];
+			$out = $keys['outKeys'];
+			$linkUpper = $this->camelUpper($name);
+
+			$match = [];
+			$local = $in->getLocalColumns();
+			$foreign = $in->getForeignColumns();
+			foreach ($local as $i => $inKey) {
+				$match[] = $linkUpper.'::'.$this->camelLower($foreign[$i]).' => $this->get'.$this->camelUpper($inKey).'()';
+			}
+
+
+			foreach ($out as $outTable => $fk) {
+				$upper = $this->camelUpper($outTable);
+				$join = [];
+
+				$local = $fk->getLocalColumns();
+				$foreign = $fk->getForeignColumns();
+
+				foreach ($local as $i => $localCol) {
+					$join[] = $linkUpper.'::'.$this->camelLower($foreign[$i]).' => '.$upper.'::'.$this->camelLower($localCol);
+				}
+
+				$linkedGetters[] = sprintf(
+'	public function get'.$upper.'s() {
+		return $this->mapper
+			->from('.$upper.'::TABLE)
+			->join('.$linkUpper.'::TABLE, '.$upper.'::TABLE, [%s])
+			->where([%s])
+			->getAll();
+	}
+', implode(", ", $join), implode(', ', $match));;
+
+			}
+		}
 
 		foreach ($table->getAllColumns() as $name => $column) {
 
@@ -29,7 +68,7 @@ class RecordBuilder {
 			$export = self::spaceToTab($export, 3);
 
 
-			$constants[] = 'const '.$property.' = "'.$name.'";';
+			$constants[] = 'const '.$property.' = "'.$tableName.'.'.$name.'";';
 			$validatorInits[] = $export;
 			$gettersetters[] = sprintf(self::$getterTemplate, $ucProper, $property);
 			if (! $pk->hasColumn($name)) {
@@ -72,6 +111,7 @@ class RecordBuilder {
 			$className,
 			implode("\n\n", $gettersetters),
 			implode("\n\t", $fkGetters),
+			implode("\n\t", $linkedGetters),
 			implode("\n\t", $constants),
 			self::indentTabs(implode(",\n", $validatorInits), 3)
 		);
@@ -98,6 +138,7 @@ namespace %s;
 
 class %s extends \Orm\Data\AbstractRecord {
 
+%s
 %s
 %s
 

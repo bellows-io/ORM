@@ -14,6 +14,7 @@ class QueryBuilder {
 	private $conds = array();
 	private $params = array();
 	private $order = array();
+	private $joins = array();
 
 	private $callback;
 
@@ -25,67 +26,94 @@ class QueryBuilder {
 
 	public function where(array $map) {
 		foreach ($map as $key => $value) {
-			$this->conds[] = "`$key` = ?";
+			$this->conds[] = "$key = ?";
 			$this->params[] = $value;
 		}
 		return $this;
 	}
 
+	public function join($table, array $joins) {
+		$this->joins[] = [$table, $joins];
+		return $this;
+	}
+
 	public function whereNot(array $map) {
 		foreach ($map as $key => $value) {
-			$this->conds[] = "`$key` != ?";
+			$this->conds[] = "$key != ?";
 			$this->params[] = $value;
 		}
 		return $this;
 	}
 
 	public function orderAsc($columnName) {
-		$order[] = "$columnName ASC";
+		$this->order[] = "$columnName ASC";
 		return $this;
 	}
 
 	public function orderDesc($columnName) {
-		$order[] = "$columnName DESC";
+		$this->order[] = "$columnName DESC";
 		return $this;
 	}
 
-	public function readAll() {
-		$condsql = "";
+	protected function buildQueryBody($setSql = '', $limit = '') {
+		$condSql = "";
+		$joinSql = "";
+		$orderSql = "";
 		if ($this->conds) {
-			$condsql = "WHERE ".implode(" AND ", $this->conds);
+			$condSql = "WHERE ".implode(" AND ", $this->conds);
 		}
-		$sql = "SELECT * FROM {$this->tableName} {$condsql}";
+		if ($this->joins) {
+			$joinStatements = [];
+			foreach ($this->joins as $join) {
+				$statement = [];
+				list($joinTable, $ons) = $join;
+				foreach ($ons as $fromCol => $toCol) {
+					$statement[] = $fromCol.' = '.$toCol;
+				}
+				$joinStatements[] = ' INNER JOIN '.$joinTable.' ON '.implode(' AND ', $statement);
+			}
+			$joinSql = implode("\n", $joinStatements);
+		}
+		if ($this->order) {
+			$orderSql = "ORDER BY ".implode(", ", $this->order);
+		}
+		return "{$joinSql} {$setSql} {$condSql} {$orderSql} {$limit}";
+	}
+
+	protected function buildSelectQuery($limit = '') {
+		return "SELECT {$this->tableName}.* FROM {$this->tableName}".$this->buildQueryBody('', $limit);
+	}
+
+	public function readAll() {
+		$sql = $this->buildSelectQuery();
 		return call_user_func($this->callback, $sql, $this->params, self::RETURN_ARRAY);
 	}
 
 	public function readOne() {
-		$condsql = "";
-		if ($this->conds) {
-			$condsql = "WHERE ".implode(" AND ", $this->conds);
-		}
-		$sql = "SELECT * FROM {$this->tableName} {$condsql} LIMIT 1";
+		$sql = $this->buildSelectQuery("LIMIT 1");
 		return call_user_func($this->callback, $sql, $this->params, self::RETURN_SINGLE);
 	}
 
 	public function readSlice($start, $length) {
-		$condsql = "";
-		if ($this->conds) {
-			$condsql = "WHERE ".implode(" AND ", $this->conds);
-		}
-		$sql = "SELECT * FROM {$this->tableName} {$condsql} LIMIT {$start}, {$length}";
+		$sql = $this->buildSelectQuery("LIMIT {$start}, {$length}");
 		return call_user_func($this->callback, $sql, $this->params, self::RETURN_ARRAY);
 	}
 
-	public function update($map) {
-		$updateMap = TableColumnMap::fromTableColumnMap($map);
+	public function update(array $map) {
+		$setSql = "SET %s";
+		$setValues = [];
+		foreach ($map as $key => $value) {
+			$column = $this->mapper->getColumnType($key);
+			array_unshift($this->params, $column->stringify($value));
+			$setValues[] = "$key = ?";
+		}
+
+		$sql = "UPDATE {$this->tableName} ".$this->buildQueryBody(sprintf($setSql, implode(", ", $setValues)));
+		return call_user_func($this->callback, $sql, $this->params, self::RETURN_NONE);
 	}
 
 	public function delete() {
-		$condsql = "";
-		if ($this->conds) {
-			$condsql = "WHERE ".implode(" AND ", $this->conds);
-		}
-		$sql = "DELETE FROM {$this->tableName} {$condsql}";
+		$sql = "DELETE {$this->tableName} FROM {$this->tableName} ".$this->buildQueryBody();
 		return call_user_func($this->callback, $sql, $this->params, self::RETURN_NONE);
 	}
 

@@ -41,6 +41,10 @@ class Mapper extends \Orm\Data\AbstractMapper {
 				throw new \\Exception("No AutoIncrement column on table `\$table`");
 		}
 	}
+
+	protected function initializeColumnTypes() {
+%s
+	}
 }
 
 
@@ -50,14 +54,20 @@ PHP;
 
 		$cases = [];
 		$readSwitch = [];
+		$columnTypes = [];
 		foreach ($schema->getTables() as $table) {
 			$cases[] = sprintf(self::$buildSwitchTemplate, $this->camelUpper($table->getName()));
 			if ($aiColumn = $table->getAutoIncrementColumn()) {
 				$readSwitch[] = sprintf(self::$readSwitchTemplate, $this->camelUpper($table->getName()), $this->camelLower($aiColumn->getName()));
 			}
+
+			foreach ($table->getAllColumns() as $column) {
+				$key = sprintf('`%s`.`%s`', $table->getName(), $column->getName());
+				$columnTypes[] = "\$this->setColumnType(\"$key\", \\".var_export($column->getType(), true).');';
+			}
 		}
 
-		return sprintf(self::$template, $namespace, implode("\n", $cases), implode("\n", $readSwitch));
+		return sprintf(self::$template, $namespace, implode("\n", $cases), implode("\n", $readSwitch), $this->indentTabs(implode("\n", $columnTypes), 2));
 
 	}
 }

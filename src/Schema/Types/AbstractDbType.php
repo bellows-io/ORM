@@ -23,4 +23,12 @@ abstract class AbstractDbType {
 	public function parse($value) {
 		return $value;
 	}
+
+	public function stringify($value) {
+		return $value;
+	}
+
+	public static function __set_state(array $data) {
+		return new static($data['isNullable']);
+	}
 }

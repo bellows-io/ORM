@@ -4,24 +4,27 @@ namespace Orm\Data;
 
 abstract class AbstractRecord {
 
-	private $recordValue = [];
-	private $dirtyFields = [];
+	protected $recordValue = [];
+	protected $dirtyFields = [];
 
-	protected $modelMapper;
+	protected $mapper;
 	protected $foreign = [];
 
-	public function __construct(array $recordValue, $modelMapper) {
-		$this->modelMapper = $modelMapper;
-		$this->recordValue = $recordValue;
+	public function __construct(array $recordValue, AbstractMapper $mapper) {
+
+		foreach ($recordValue as $col => $value) {
+			$property = '`'.static::TABLE."`.`$col`";
+			$this->recordValue[$property] = $value;
+		}
+
+		$this->mapper = $mapper;
+		$this->dirtyFields = [];
 	}
 
-
 	protected function set($name, $value) {
-		self::$validators[$name]->validate($value);
-		$value = self::$validators[$name]->parse($value);
-
+		$this->mapper->getColumnType($name)->validate($value);
 		if ($value != $this->recordValue[$name]) {
-			$this->dirtyFields[$name] = $name;
+			$this->dirtyFields[$name] = $value;
 			$this->recordValue[$name] = $value;
 		}
 	}
@@ -42,18 +45,24 @@ abstract class AbstractRecord {
 		return $this->recordValue[$name];
 	}
 
-	public function getChangedValues() {
-		$out = [];
-		foreach ($this->dirtyFields as $field) {
-			$out[$field] = $this->recordValue[$field];
+	public function save() {
+		if ($this->dirtyFields) {
+			$this->mapper
+				->from(static::TABLE)
+				->where($this->identify())
+				->update($this->getChangedValues());
+
+			$this->dirtyFields = [];
 		}
-		return $out;
 	}
 
-	private static $validators = null;
-	private static function initRecordValidators() {
-		if (is_null(self::$validators)) {
-			self::$validators = self::buildRecordValidators();
-		}
+	public function getChangedValues() {
+		return $this->dirtyFields;
+	}
+
+	private static $validators = [];
+
+	protected static function validator($name) {
+		return $this->mapper->getColumnType($name);
 	}
 }

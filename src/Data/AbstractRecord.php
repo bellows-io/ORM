@@ -60,8 +60,6 @@ abstract class AbstractRecord {
 		return $this->dirtyFields;
 	}
 
-	private static $validators = [];
-
 	protected static function validator($name) {
 		return $this->mapper->getColumnType($name);
 	}

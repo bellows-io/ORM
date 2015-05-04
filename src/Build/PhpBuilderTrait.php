@@ -4,11 +4,11 @@ namespace Orm\Build;
 
 trait PhpBuilderTrait {
 
-	protected function camelUpper($string) {
+	public function camelUpper($string) {
 		return implode("", array_map('ucwords', explode("_", $string)));
 	}
 
-	protected function camelLower($string) {
+	public function camelLower($string) {
 		return lcfirst($this->camelUpper($string));
 	}
 
@@ -17,6 +17,30 @@ trait PhpBuilderTrait {
 		$lines = explode(PHP_EOL, $string);
 		$join = "\n".$indent;
 		return $indent.implode($join, $lines);
+	}
+
+	public function alignSymbol($string, $symbol) {
+		$lines = explode("\n", $this->spaceToTab($string));
+		$out = [];
+		$maxPos = -INF;
+		foreach ($lines as $line) {
+			$pos = strpos($line, $symbol);
+			if ($pos !== false) {
+				$maxPos = max($pos, $maxPos);
+			}
+		}
+		foreach ($lines as $line) {
+			$pos = strpos($line, $symbol);
+			if ($pos !== null) {
+				$pre  = rtrim(substr($line, 0, $pos));
+				$post = ltrim(substr($line, $pos + strlen($symbol)));
+
+				$out[] = $pre . str_repeat(' ', 1 + $maxPos - $pos) . $symbol . ' ' . $post;
+			} else {
+				$out[] = $pos;
+			}
+		}
+		return implode("\n", $out);
 	}
 
 	protected function spaceToTab($string, $spaceCount = 4) {

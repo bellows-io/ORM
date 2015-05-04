@@ -10,12 +10,12 @@ class MapperBuilder {
 	use PhpBuilderTrait;
 
 	protected static $buildSwitchTemplate = <<<SWITCH
-			case Objects\\%s::TABLE:
-				return new Objects\\%1\$s(\$record, \$this);
+			case %s::TABLE:
+				return new %1\$s(\$record, \$this);
 SWITCH;
 	protected static $readSwitchTemplate = <<<SWITCH
-			case Objects\\%s::TABLE:
-				return \$this->from(Objects\\%1\$s::TABLE)->where([Objects\\%1\$s::%2s => \$id])->readOne();
+			case %s::TABLE:
+				return \$this->from(%1\$s::TABLE)->where([%1\$s::%2s => \$id])->readOne();
 SWITCH;
 
 	protected static $template = <<<PHP
@@ -50,15 +50,16 @@ class Mapper extends \Orm\Data\AbstractMapper {
 
 PHP;
 
-	public function build($namespace, $recordObjectNamespace, Schema $schema) {
+	public function build($namespace, $objectNamespace, Schema $schema) {
 
 		$cases = [];
 		$readSwitch = [];
 		$columnTypes = [];
 		foreach ($schema->getTables() as $table) {
-			$cases[] = sprintf(self::$buildSwitchTemplate, $this->camelUpper($table->getName()));
+			$objectClass = $objectNamespace . $this->camelUpper($table->getName());
+			$cases[] = sprintf(self::$buildSwitchTemplate, $objectClass);
 			if ($aiColumn = $table->getAutoIncrementColumn()) {
-				$readSwitch[] = sprintf(self::$readSwitchTemplate, $this->camelUpper($table->getName()), $this->camelLower($aiColumn->getName()));
+				$readSwitch[] = sprintf(self::$readSwitchTemplate, $objectClass, $this->camelLower($aiColumn->getName()));
 			}
 
 			foreach ($table->getAllColumns() as $column) {

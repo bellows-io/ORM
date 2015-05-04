@@ -15,7 +15,7 @@ class RecordBuilder {
 		$gettersetters = [];
 		$fkGetters = [];
 		$tableName = $table->getName();
-		$constants = ["const TABLE = '$tableName';"];
+		$constants = ["	const TABLE = '$tableName';"];
 		$validatorInits = [];
 		$pk = $table->getPrimaryKey();
 
@@ -71,7 +71,7 @@ class RecordBuilder {
 			$ucProper = $this->camelUpper($name);
 			$property = $this->camelLower($name);
 
-			$constants[] = 'const '.$property.' = "`'.$tableName.'`.`'.$name.'`";';
+			$constants[] = '	const '.$property.' = "`'.$tableName.'`.`'.$name.'`";';
 			$gettersetters[] = sprintf(self::$getterTemplate, $ucProper, $property);
 			if (! $pk->hasColumn($name)) {
 				$gettersetters[] = sprintf(self::$setterTemplate, $ucProper, $property);
@@ -116,12 +116,12 @@ class RecordBuilder {
 		$php = sprintf(self::$classTemplate,
 			$namespace,
 			$className,
-			implode("\n\t", $constants),
+			$this->alignSymbol(implode("\n", $constants), '='),
 			implode("\n\n", $gettersetters),
 			implode("\n\t", $fkGetters),
 			implode("\n\t", $linkedGetters),
 
-			self::indentTabs(implode(",\n", $identify),3)
+			self::indentTabs($this->alignSymbol(implode(",\n", $identify), '=>'),3)
 		);
 
 		return $php;
@@ -147,7 +147,7 @@ namespace %s;
 
 class %s extends \Orm\Data\AbstractRecord {
 
-	%s
+%s
 
 %s
 %s

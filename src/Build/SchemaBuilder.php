@@ -35,18 +35,6 @@ class SchemaBuilder {
 				$schema);
 
 			$out[$recordPath] = $php;
-
-/*
-			$mapperClassName = $base.'Mapper';
-			$mapperPath = 'Mappers/'.$mapperClassName.'.php';
-
-			$php = $this->mapperBuilder->build(
-				$this->namespace.'\\Mappers',
-				$this->namespace.'\\Objects\\'.$recordClassName,
-				$mapperClassName,
-				$table);
-
-			$out[$mapperPath] = $php;*/
 		}
 
 		$out['Mapper.php'] = $this->mapperBuilder->build(
@@ -56,12 +44,4 @@ class SchemaBuilder {
 
 		return $out;
 	}
-
-	/*protected function buildMapper(Schema $schema) {
-		foreach ($schema->getTables() as $table) {
-
-
-		}
-	}*/
-
 }

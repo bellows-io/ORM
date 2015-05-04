@@ -16,12 +16,12 @@ $schema = new \Orm\Schema\Schema($tables);
 
 $namespace = "MyApp";
 $root = __DIR__.'/cache/Data/';
-$recordBuilder = new RecordBuilder();
-$mapperBuilder = new MapperBuilder();
+$recordBuilder = new \Orm\Build\RecordBuilder();
+$mapperBuilder = new \Orm\Build\MapperBuilder();
 
-file_put_contents($root.'Mapper.php', $mapperBuilder->build($namespace, Schema $schema));
+file_put_contents($root.'Mapper.php', $mapperBuilder->build($namespace, '', $schema));
 foreach ($schema->getTables() as $table) {
 	$className = $recordBuilder->camelUpper($table->getName());
-	$contents = $recordBuilder->build($namespace.'\\Objects', $className, $table, $schema);
-	file_put_contents($root.'Objects/'.$className, $contents);
+	$contents = $recordBuilder->build($namespace, $className, $table, $schema);
+	file_put_contents($root.$className, $contents);
 }
